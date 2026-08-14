@@ -11,6 +11,6 @@ public class WelcomeController {
 
     @GetMapping
     public ResponseEntity<String> welcome() {
-        return ResponseEntity.ok("Welcome to the Spring Boot Application! This is a simple REST API endpoint.");
+        return ResponseEntity.ok("Welcome to the Spring Boot Application. This is a simple REST API endpoint.");
     }
 }
