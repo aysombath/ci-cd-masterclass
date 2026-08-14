@@ -14,7 +14,7 @@ jobs:
 
     steps:
       - name: Checkout Source
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Set up JDK 21
         uses: actions/setup-java@v5
@@ -26,20 +26,23 @@ jobs:
       - name: Build Jar with Maven
         run: mvn clean package -DskipTests
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
       - name: Log in to DockerHub
         uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
       - name: Build and Push Docker Image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
-          platforms: linux/arm64
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest
 
@@ -55,15 +58,28 @@ jobs:
             IMAGE="${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest"
             CONTAINER="${{ env.IMAGE_NAME }}"
 
+            echo "Pulling latest image..."
             docker pull "$IMAGE"
 
+            echo "Stopping old container..."
             docker stop "$CONTAINER" || true
             docker rm "$CONTAINER" || true
 
+            echo "Starting new container..."
             docker run -d \
               --name "$CONTAINER" \
               --restart unless-stopped \
               -p 8081:8081 \
               "$IMAGE"
 
+            echo "Waiting for container..."
+            sleep 10
+
+            echo "Container status:"
+            docker ps -a --filter "name=$CONTAINER"
+
+            echo "Container logs:"
+            docker logs --tail 50 "$CONTAINER"
+
+            echo "Cleaning old images..."
             docker image prune -f
